@@ -216,24 +216,55 @@ sudo systemctl start intervals-bot
 
 ### Docker Deployment
 
-Create a `Dockerfile`:
-```dockerfile
-FROM python:3.11-slim
+The easiest way to run the bot in a container.
 
-WORKDIR /app
+**Prerequisites**: Docker and Docker Compose installed
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+**Setup**:
+```bash
+# Clone and navigate to directory
+cd intervals-icu-bot
 
-COPY . .
+# Create .env file with your credentials
+cp .env.example .env
+nano .env  # Edit with your tokens
 
-CMD ["python", "main.py"]
+# Build and run with docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
 ```
 
-Build and run:
+**How it works**:
+- Dockerfile builds the image
+- docker-compose.yml reads `.env` at runtime
+- `.dockerignore` prevents `.env` from being copied into image
+- Environment variables passed to container securely
+
+**Verify .env is not in image**:
 ```bash
-docker build -t intervals-bot .
-docker run -d --name intervals-bot --env-file .env intervals-bot
+docker-compose build
+docker run --rm intervals-icu-bot ls -la .env
+# Should show: No such file or directory
+```
+
+**Useful commands**:
+```bash
+# Rebuild after code changes
+docker-compose up -d --build
+
+# View running containers
+docker-compose ps
+
+# Stop and remove
+docker-compose down
+
+# View logs with timestamp
+docker-compose logs -f --timestamps
 ```
 
 ## Troubleshooting
@@ -270,6 +301,9 @@ intervals-icu-bot/
 ├── requirements.txt       # Python dependencies
 ├── .env.example          # Example environment variables
 ├── .gitignore            # Git ignore rules
+├── Dockerfile            # Docker image definition
+├── docker-compose.yml    # Docker Compose configuration
+├── .dockerignore         # Files excluded from Docker image
 └── README.md             # This file
 ```
 

@@ -15,6 +15,11 @@ from intervals_client import IntervalsClient
 
 logger = logging.getLogger(__name__)
 
+# Whitelist of allowed Telegram user IDs
+# To find your user ID: run the bot and send /start, check the console logs
+# Example: ALLOWED_USERS = [123456789, 987654321]
+ALLOWED_USERS = []  # Add your Telegram user ID here after finding it
+
 
 class WorkoutBot:
     """Telegram bot for processing Strong app workouts."""
@@ -43,8 +48,39 @@ class WorkoutBot:
             MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_message)
         )
 
+    def _is_user_authorized(self, user_id: int) -> bool:
+        """
+        Check if a user is authorized to use the bot.
+
+        Args:
+            user_id: Telegram user ID
+
+        Returns:
+            True if user is authorized (whitelist is empty or user is in whitelist)
+        """
+        # If whitelist is empty, allow all users (for initial setup)
+        if not ALLOWED_USERS:
+            return True
+        return user_id in ALLOWED_USERS
+
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle the /start command."""
+        user_id = update.effective_user.id
+        username = update.effective_user.username or "N/A"
+
+        # Log user ID clearly for whitelist setup
+        logger.info("=" * 60)
+        logger.info(f"USER CONNECTED - Telegram ID: {user_id}, Username: @{username}")
+        logger.info("=" * 60)
+
+        # Check authorization
+        if not self._is_user_authorized(user_id):
+            await update.message.reply_text(
+                "⛔ Not authorized. This bot is private and only accessible to whitelisted users."
+            )
+            logger.warning(f"Unauthorized access attempt by user {user_id} (@{username})")
+            return
+
         welcome_message = (
             "Welcome to the Strong → Intervals.icu Bot!\n\n"
             "Simply share your workout from the Strong app to this chat, "
@@ -55,10 +91,20 @@ class WorkoutBot:
             "/test - Test the connection to Intervals.icu"
         )
         await update.message.reply_text(welcome_message)
-        logger.info(f"User {update.effective_user.id} started the bot")
+        logger.info(f"User {user_id} started the bot")
 
     async def help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle the /help command."""
+        user_id = update.effective_user.id
+
+        # Check authorization
+        if not self._is_user_authorized(user_id):
+            await update.message.reply_text(
+                "⛔ Not authorized. This bot is private and only accessible to whitelisted users."
+            )
+            logger.warning(f"Unauthorized access attempt by user {user_id}")
+            return
+
         help_message = (
             "**How to use this bot:**\n\n"
             "1. Open the Strong app on your phone\n"
@@ -78,10 +124,20 @@ class WorkoutBot:
             "Need help? Check the README or contact your administrator."
         )
         await update.message.reply_text(help_message, parse_mode='Markdown')
-        logger.info(f"User {update.effective_user.id} requested help")
+        logger.info(f"User {user_id} requested help")
 
     async def test_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle the /test command to test Intervals.icu connection."""
+        user_id = update.effective_user.id
+
+        # Check authorization
+        if not self._is_user_authorized(user_id):
+            await update.message.reply_text(
+                "⛔ Not authorized. This bot is private and only accessible to whitelisted users."
+            )
+            logger.warning(f"Unauthorized access attempt by user {user_id}")
+            return
+
         await update.message.reply_text("Testing connection to Intervals.icu...")
 
         if self.intervals_client.test_connection():
@@ -92,7 +148,7 @@ class WorkoutBot:
             await update.message.reply_text(
                 "❌ Connection failed. Please check your API credentials and try again."
             )
-        logger.info(f"User {update.effective_user.id} ran connection test")
+        logger.info(f"User {user_id} ran connection test")
 
     async def handle_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """
@@ -106,6 +162,14 @@ class WorkoutBot:
         user_id = update.effective_user.id
 
         logger.info(f"Received message from user {user_id}")
+
+        # Check authorization
+        if not self._is_user_authorized(user_id):
+            await update.message.reply_text(
+                "⛔ Not authorized. This bot is private and only accessible to whitelisted users."
+            )
+            logger.warning(f"Unauthorized access attempt by user {user_id}")
+            return
 
         # Check if this looks like a Strong workout
         if not StrongParser.is_strong_workout(text):

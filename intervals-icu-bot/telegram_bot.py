@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Whitelist of allowed Telegram user IDs
 # To find your user ID: run the bot and send /start, check the console logs
 # Example: ALLOWED_USERS = [123456789, 987654321]
-ALLOWED_USERS = []  # Add your Telegram user ID here after finding it
+ALLOWED_USERS = [337053497]  # Add your Telegram user ID here after finding it
 
 
 class WorkoutBot:
